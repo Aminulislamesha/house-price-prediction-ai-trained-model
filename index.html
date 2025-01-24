@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>House Price Prediction</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .container {
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            width: 300px;
+            text-align: center;
+        }
+        h1 {
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin: 10px 0 5px;
+        }
+        input {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:disabled {
+            background-color: #ccc;
+        }
+        p {
+            margin-top: 20px;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>House Price Prediction</h1>
+        <p id="status">Waiting for training...</p>
+        <button id="trainButton">Train Model</button>
+        <label for="size">House Size (sq ft):</label>
+        <input id="size" type="number"/>
+        <label for="bedroom">Number of Bedrooms:</label>
+        <input id="bedroom" type="number"/>
+        <label for="bathroom">Number of Bathrooms:</label>
+        <input id="bathroom" type="number"/>
+        <button id="predictButton" disabled>Predict</button>
+        <p id="result"></p>
+    </div>
+
+    <script>
+        // 1. Define the Dataset
+        const data = [
+            { size: 1200, bedrooms: 3, bathrooms: 2, price: 300000 },
+            { size: 1500, bedrooms: 4, bathrooms: 3, price: 400000 },
+            { size: 800, bedrooms: 2, bathrooms: 1, price: 200000 },
+            { size: 950, bedrooms: 2, bathrooms: 1, price: 220000 },
+            { size: 2000, bedrooms: 5, bathrooms: 3, price: 500000 },
+            { size: 2200, bedrooms: 4, bathrooms: 3, price: 550000 },
+            { size: 1300, bedrooms: 3, bathrooms: 2, price: 320000 }
+        ];
+
+        // 2. Prepare Training Data
+        const inputs = data.map(d => [d.size, d.bedrooms, d.bathrooms]); // Features
+        const labels = data.map(d => d.price); // Target
+
+        const inputTensor = tf.tensor2d(inputs);
+        const labelTensor = tf.tensor2d(labels, [labels.length, 1]); // Reshape to 2D
+
+        // 3. Define the Model
+        const model = tf.sequential();
+        model.add(tf.layers.dense({ units: 1, inputShape: [3] })); // Linear regression: 3 features, 1 output
+
+        model.compile({
+            optimizer: tf.train.adam(),
+            loss: 'meanSquaredError'
+        });
+
+        // 4. Train the Model
+        document.getElementById('trainButton').addEventListener('click', async () => {
+            document.getElementById('status').innerText = 'Training...';
+
+            await model.fit(inputTensor, labelTensor, {
+                epochs: 100,
+                callbacks: {
+                    onEpochEnd: (epoch, logs) => {
+                        document.getElementById('status').innerText =
+                            `Epoch ${epoch + 1}: Loss = ${logs.loss.toFixed(4)}`;
+                    }
+                }
+            });
+
+            document.getElementById('status').innerText = 'Training Complete!';
+            document.getElementById('predictButton').disabled = false;
+        });
+
+        // 5. Make Predictions
+        document.getElementById('predictButton').addEventListener('click', () => {
+            const size = parseFloat(document.getElementById('size').value);
+            const bedroom = parseFloat(document.getElementById('bedroom').value);
+            const bathroom = parseFloat(document.getElementById('bathroom').value);
+            const newHouse = [size, bedroom, bathroom]; // Example: 1500 sq ft, 3 bedrooms, 2 bathrooms
+            const input = tf.tensor2d([newHouse]);
+
+            const prediction = model.predict(input);
+            prediction.data().then(price => {
+                document.getElementById('result').innerText =
+                    `Predicted Price: $${price[0].toFixed(2)}`;
+            });
+        });
+    </script>
+</body>
+</html>
